@@ -27,3 +27,8 @@ h1, body {
 	left: 16.66%;
 	position: absolute;
 }
+
+#panorama {
+    width: 400px;
+    height: 400px;
+}

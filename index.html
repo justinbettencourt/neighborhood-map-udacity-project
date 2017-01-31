@@ -10,6 +10,7 @@
 			<div class="logo">
 				<h1>Coffee Search</h1>
 			</div>
+			<input type="text">
 			<div>
 				<ul class="list" data-bind="foreach: coffeeShopList">
 					<li data-bind="text: title" id="list-item">
@@ -21,6 +22,6 @@
 		<script src="js/lib/knockout-3.4.1.js"></script>
 		<script src="js/main.js"></script>
 		<script src="js/locationData.js"></script>
-		<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDeM17nYiB2bV9EsANJTFbsbBGWDedYUNY&callback=initMap"></script>
+		<script async defer src="https://maps.googleapis.com/maps/api/js?libraries=geometry,drawing&key=AIzaSyDeM17nYiB2bV9EsANJTFbsbBGWDedYUNY&v=3&callback=initMap"></script>
 	</body>
 </html>
