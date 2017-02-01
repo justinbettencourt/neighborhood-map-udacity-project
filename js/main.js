@@ -2,6 +2,16 @@ var map;
 var markers = [];
 var london = {lat: 42.984938, lng: -81.245313};
 
+// This is the funtion that handles the marker animation.
+function toggleBounce(marker) {
+	if(marker.getAnimation() !== null) {
+		marker.setAnimation(null);
+	} else {
+		marker.setAnimation(google.maps.Animation.BOUNCE);
+		setTimeout(function(){ marker.setAnimation(null); }, 1450);
+	}
+}
+
 function initMap() {
 	// First we will create the map and center it to the location we want. 
 	var map = new google.maps.Map(document.getElementById('map'), {
@@ -9,9 +19,7 @@ function initMap() {
 		center: london,
 		mapTypeControl: false
 	});
-
 	var infoWindow = new google.maps.InfoWindow();
-
 	var bounds = new google.maps.LatLngBounds();
 
 	// We're going to create a for loop to loop through all the data in the locationData.js file.
@@ -20,12 +28,15 @@ function initMap() {
 		var position = coffeeShopLocations[i].location;
 		// Set the title of the location into the title variable.
 		var title = coffeeShopLocations[i].title;
-
+		var address = coffeeShopLocations[i].address;
+		var phone = coffeeShopLocations[i].phone;
 		// Create a marker for each location in the list.
 		var marker = new google.maps.Marker({
 			position: position,
 			map: map,
 			title: title,
+			address: address,
+			phone: phone,
 			animation: google.maps.Animation.DROP
 		});
 
@@ -34,7 +45,8 @@ function initMap() {
 
 		marker.addListener('click', function() {
 			populateInfoWindow(this, infoWindow);
-		});
+			toggleBounce(this, marker)
+		});		
 	}
 	ko.applyBindings(new myViewModel());
 }
@@ -49,7 +61,8 @@ var listView = function(data) {
 /*** VIEW MODEL ***/
 var myViewModel = function() {
 	var self = this;
-
+	var infoWindow = new google.maps.InfoWindow();
+	
 	self.list = ko.observableArray([]);
 
 	// Push data in listView to observableArray "list".
@@ -57,7 +70,11 @@ var myViewModel = function() {
 		self.list.push(new listView(item));
 	});
 
-	// In place to setup the filter.
+	self.selectedCoffeeShop = function () {
+		populateInfoWindow(this.marker, infoWindow);
+		toggleBounce(this.marker);
+	}
+
 	self.filter = ko.observable('');
 
 	// By using the ko.computed function, we can allow knockout.js to update itself every time the search has changed. The filter will come shortly once we get the list working as intended.
@@ -71,7 +88,19 @@ var myViewModel = function() {
                 }
             });
 			return self.list();
-        } 
+        } else {
+			var filteredArray = ko.utils.arrayFilter(self.list(), function(item) {
+				if(item.title.toLowerCase().indexOf(filter) !== -1) {
+					item.marker.setVisible(true);
+					return true;
+				} else { 
+					item.marker.setVisible(false);
+					return false;
+				}
+			});
+
+			return filteredArray;
+		}
     });
 }
 
@@ -96,7 +125,10 @@ function populateInfoWindow(marker, infoWindow) {
 				var nearStreetViewLocation = data.location.latLng;
 				var heading = google.maps.geometry.spherical.computeHeading(nearStreetViewLocation, marker.position);
 				infoWindow.setContent(
-						'<h3>' + marker.title + '</h3>' + 
+						'<h3>' + marker.title + '</h3>' +
+						'<ul class="list"><li>' + marker.address + '</li>' +
+						'<li>' + marker.phone + '</li></ul>' +
+						'<br>' +
 						'<div id="panorama"></div>'
 					);
 				var panoramaOptions = {
@@ -117,4 +149,8 @@ function populateInfoWindow(marker, infoWindow) {
 
 		infoWindow.open(map, marker);
 	}
+}
+
+function googleError() {
+	alert("Sorry, we were unable to load Google Maps.");
 }
