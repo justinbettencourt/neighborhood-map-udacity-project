@@ -55,6 +55,8 @@ function initMap() {
 var listView = function(data) {
 	this.title = data.title;
 	this.location = data.location;
+	this.address = data.address;
+	this.phone = data.phone;
 	this.marker = data.marker;
 }
 
@@ -83,7 +85,7 @@ var myViewModel = function() {
         // If there is no filter, display all the contents on the list.
         if(!filter){
             self.list().forEach(function(item){
-            	if (item.marker == true) {
+            	if (item.marker != true) {
                 	item.marker.setVisible(true);
                 }
             });
