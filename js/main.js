@@ -1,16 +1,7 @@
 var map;
 var markers = [];
+var marker;
 var london = {lat: 42.984938, lng: -81.245313};
-
-// This is the funtion that handles the marker animation.
-function toggleBounce(marker) {
-	if(marker.getAnimation() !== null) {
-		marker.setAnimation(null);
-	} else {
-		marker.setAnimation(google.maps.Animation.BOUNCE);
-		setTimeout(function(){ marker.setAnimation(null); }, 1450);
-	}
-}
 
 function initMap() {
 	// First we will create the map and center it to the location we want. 
@@ -19,34 +10,33 @@ function initMap() {
 		center: london,
 		mapTypeControl: false
 	});
-	var infoWindow = new google.maps.InfoWindow();
-	var bounds = new google.maps.LatLngBounds();
+	
+	var currentMarker = null;
+	var infoWindow = new google.maps.InfoWindow();	
 
 	// We're going to create a for loop to loop through all the data in the locationData.js file.
 	for (var i = 0; i < coffeeShopLocations.length; i++) {
-		// Set the position data from the coffeeShopLocations array.
-		var position = coffeeShopLocations[i].location;
-		// Set the title of the location into the title variable.
-		var title = coffeeShopLocations[i].title;
-		var address = coffeeShopLocations[i].address;
-		var phone = coffeeShopLocations[i].phone;
 		// Create a marker for each location in the list.
-		var marker = new google.maps.Marker({
-			position: position,
+		marker = new google.maps.Marker({
+			position: new google.maps.LatLng(coffeeShopLocations[i].location),
 			map: map,
-			title: title,
-			address: address,
-			phone: phone,
+			title: coffeeShopLocations[i].title,
+			address: coffeeShopLocations[i].address,
+			phone: coffeeShopLocations[i].phone,
+			id: coffeeShopLocations[i].fourSquareVenueID,
 			animation: google.maps.Animation.DROP
 		});
 
 		// For each marker in the for loop, set it as its own identity of the marker variable above.
 		coffeeShopLocations[i].marker = marker;
 
+		/*Populates the markers array with each marker*/
+        markers.push(marker);
+
 		marker.addListener('click', function() {
 			populateInfoWindow(this, infoWindow);
-			toggleBounce(this, marker)
-		});		
+			//toggleBounce(this, marker)
+		});
 	}
 	ko.applyBindings(new myViewModel());
 }
@@ -74,7 +64,7 @@ var myViewModel = function() {
 
 	self.selectedCoffeeShop = function () {
 		populateInfoWindow(this.marker, infoWindow);
-		toggleBounce(this.marker);
+		//toggleBounce(this.marker);
 	}
 
 	self.filter = ko.observable('');
@@ -107,50 +97,52 @@ var myViewModel = function() {
 }
 
 // This function gets called above when a marker is clicked. It'll display the information for the location selected inside of an InfoWindow.
-function populateInfoWindow(marker, infoWindow) {
-	// Check to make sure the infoWindow isn't already open for this marker.
-	if(infoWindow.marker != marker) {
-		infoWindow.setContent('');
-		infoWindow.marker = marker;
-		// Clear the marker property when the window closes.
-		infoWindow.addListener('closeClick', function() {
-			infoWindow.marker = null;
-		});
-
-		// Lets add the street view service to the project.
-		var streetViewService = new google.maps.StreetViewService();
-		var radius = 50;
+var populateInfoWindow = function (marker, infoWindow) {
+		var apiURL = 'https://api.foursquare.com/v2/venues/';
+		var foursquareClientID = '2KCAL0D3NEY35MSUQZHZUW2OHI0QXNV3VH0G2F231EDKWNJU'
+		var foursquareSecret ='4L4ML34GJ3BAHSMOBWKH1R4UX30EDUXF5Q3GL3ERWFSEGOFN';
+		var foursquareVersion = '20170115';
+		var venueFoursquareID = marker.id;
+		var foursquareURL = apiURL + venueFoursquareID + '?client_id=' + foursquareClientID +  '&client_secret=' + foursquareSecret +'&v=' + foursquareVersion;
+		//var infoWindow = new google.maps.InfoWindow();
 		
-		// Lets get the streetview data we need and create the contents inside the window.
-		function getStreetView(data, status) {
-			if(status == google.maps.StreetViewStatus.OK) {
-				var nearStreetViewLocation = data.location.latLng;
-				var heading = google.maps.geometry.spherical.computeHeading(nearStreetViewLocation, marker.position);
-				infoWindow.setContent(
-						'<h3>' + marker.title + '</h3>' +
-						'<ul class="list"><li>' + marker.address + '</li>' +
-						'<li>' + marker.phone + '</li></ul>' +
+		if(infoWindow.marker != marker) {
+			infoWindow.setContent('');
+			infoWindow.marker = marker;
+			// Clear the marker property when the window closes.
+			infoWindow.addListener('closeClick', function() {
+				infoWindow.marker = null;
+			});
+		
+			/*async request for the FourSquare api data*/
+			$.ajax({
+				url: foursquareURL,
+				success: function(data) {
+					console.log(data);
+				
+					var name =  data.response.venue.name;
+					var phone = data.response.venue.contact.phone;
+					var location = data.response.venue.location.address;
+					var rating = data.response.venue.rating;
+
+					/*The infowindow is udpdated with the FourSquare api data and the infowindow is opened immediately afterwards*/
+					infoWindow.setContent(
+						'<h3>' + name + '</h3>' +
+						'<ul class="list"><li>' + location + '</li>' +
+						'<li>' + phone + '</li>' +
+						'<li>' + rating.toString() + '</li></ul>' +
 						'<br>' +
-						'<div id="panorama"></div>'
+						'<div id="panorama"></div>' +
+						'<br>Powered by Foursquare and Google Maps'
 					);
-				var panoramaOptions = {
-					position: nearStreetViewLocation,
-					pov: {
-						heading: heading,
-						pitch: 0
-					}
-				};
-
-				var panorama = new google.maps.StreetViewPanorama(document.getElementById('panorama'), panoramaOptions);
-			} else {
-				infoWindow.setContent('<div>' + marker.title + '</div>' + '<div>No Street View Found</div>');
-			}
+					infoWindow.open(map, marker);
+				},
+				/*Foursquare api error handling*/
+				error: function(error) {
+					alert("Sorry, could not retrieve Foursquare API.")
+				}
+			});
 		}
-
-		streetViewService.getPanoramaByLocation(marker.position, radius, getStreetView);
-
-		infoWindow.open(map, marker);
-	}
 }
 
 function googleError() {
