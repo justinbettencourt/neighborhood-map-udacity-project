@@ -1,6 +1,6 @@
 var coffeeShopLocations =[
 	{
-		title: "Coffee Culture Cafe & Eatery",
+		title: "Coffee Culture",
 		fourSquareVenueID: "4b4560fef964a520ad0b26e3",
 		location: {
 			lat: 42.984855, 

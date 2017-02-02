@@ -3,6 +3,16 @@ var markers = [];
 var marker;
 var london = {lat: 42.984938, lng: -81.245313};
 
+// This is the funtion that handles the marker animation.
+function toggleBounce(marker) {
+	if(marker.getAnimation() !== null) {
+		marker.setAnimation(null);
+	} else {
+		marker.setAnimation(google.maps.Animation.BOUNCE);
+		setTimeout(function(){ marker.setAnimation(null); }, 700);
+	}
+}
+
 function initMap() {
 	// First we will create the map and center it to the location we want. 
 	var map = new google.maps.Map(document.getElementById('map'), {
@@ -35,7 +45,7 @@ function initMap() {
 
 		marker.addListener('click', function() {
 			populateInfoWindow(this, infoWindow);
-			//toggleBounce(this, marker)
+			toggleBounce(this, marker)
 		});
 	}
 	ko.applyBindings(new myViewModel());
@@ -64,12 +74,12 @@ var myViewModel = function() {
 
 	self.selectedCoffeeShop = function () {
 		populateInfoWindow(this.marker, infoWindow);
-		//toggleBounce(this.marker);
+		toggleBounce(this.marker);
 	}
 
 	self.filter = ko.observable('');
 
-	// By using the ko.computed function, we can allow knockout.js to update itself every time the search has changed. The filter will come shortly once we get the list working as intended.
+	// By using the ko.computed function, we can allow knockout.js to update itself every time the search has changed.
 	self.coffeeShopList = ko.computed(function(){
         var filter = self.filter();
         // If there is no filter, display all the contents on the list.
@@ -98,13 +108,11 @@ var myViewModel = function() {
 
 // This function gets called above when a marker is clicked. It'll display the information for the location selected inside of an InfoWindow.
 var populateInfoWindow = function (marker, infoWindow) {
-		var apiURL = 'https://api.foursquare.com/v2/venues/';
-		var foursquareClientID = '2KCAL0D3NEY35MSUQZHZUW2OHI0QXNV3VH0G2F231EDKWNJU'
-		var foursquareSecret ='4L4ML34GJ3BAHSMOBWKH1R4UX30EDUXF5Q3GL3ERWFSEGOFN';
-		var foursquareVersion = '20170115';
-		var venueFoursquareID = marker.id;
-		var foursquareURL = apiURL + venueFoursquareID + '?client_id=' + foursquareClientID +  '&client_secret=' + foursquareSecret +'&v=' + foursquareVersion;
-		//var infoWindow = new google.maps.InfoWindow();
+		var fsUrl = 'https://api.foursquare.com/v2/venues/';
+		var venueID = marker.id;
+		var clientID = '2KCAL0D3NEY35MSUQZHZUW2OHI0QXNV3VH0G2F231EDKWNJU'
+		var clientSecret ='4L4ML34GJ3BAHSMOBWKH1R4UX30EDUXF5Q3GL3ERWFSEGOFN';
+		var URL = fsUrl + venueID + '?client_id=' + clientID +  '&client_secret=' + clientSecret +'&v=20170202';
 		
 		if(infoWindow.marker != marker) {
 			infoWindow.setContent('');
@@ -113,10 +121,9 @@ var populateInfoWindow = function (marker, infoWindow) {
 			infoWindow.addListener('closeClick', function() {
 				infoWindow.marker = null;
 			});
-		
-			/*async request for the FourSquare api data*/
+
 			$.ajax({
-				url: foursquareURL,
+				url: URL,
 				success: function(data) {
 					console.log(data);
 				
@@ -125,23 +132,41 @@ var populateInfoWindow = function (marker, infoWindow) {
 					var location = data.response.venue.location.address;
 					var rating = data.response.venue.rating;
 
-					/*The infowindow is udpdated with the FourSquare api data and the infowindow is opened immediately afterwards*/
+					var streetViewService = new google.maps.StreetViewService();
+					var radius = 50;
+
+					function getStreetView(data, status) {
+						if (status == google.maps.StreetViewStatus.OK) {			  
+							var nearStreetViewLocation = data.location.latLng;
+							var heading = google.maps.geometry.spherical.computeHeading(nearStreetViewLocation, marker.position);
+								var streetViewOptions = {
+									position: nearStreetViewLocation,
+									pov: {
+										heading: heading,
+										pitch: 0
+									}
+								};
+								var streetView = new google.maps.StreetViewPanorama(document.getElementById("panorama"), streetViewOptions);
+						}
+					}
 					infoWindow.setContent(
-						'<h3>' + name + '</h3>' +
-						'<ul class="list"><li>' + location + '</li>' +
-						'<li>' + phone + '</li>' +
-						'<li>' + rating.toString() + '</li></ul>' +
+						'<h2>' + name + '</h2>' +
+						'<ul class="list">' +
+						'<li><b>Address: </b>' + location + '</li>' +
+						'<li><b>Phone: </b>' + phone + '</li>' +
+						'<li><b>Rating: </b>' + rating.toString() + '/10</li></ul>' +
 						'<br>' +
 						'<div id="panorama"></div>' +
 						'<br>Powered by Foursquare and Google Maps'
 					);
+					streetViewService.getPanoramaByLocation(marker.position, radius, getStreetView);
 					infoWindow.open(map, marker);
 				},
-				/*Foursquare api error handling*/
 				error: function(error) {
 					alert("Sorry, could not retrieve Foursquare API.")
 				}
 			});
+			
 		}
 }
 
