@@ -1,6 +1,6 @@
-# Neighborhood Coffee Search Map
+# Coffee Run
 
-This is a downtown coffee search app created for the neighborhood map project for the Front-End Web Development course at Udacity.
+This was a downtown coffee search app created for the neighborhood map project for the Front-End Web Development course at Udacity. I decided to further develop this project for my own use and enhance some of the features.
 
 ## Launching the Application
 
